@@ -1,13 +1,11 @@
-use async_trait::async_trait;
 use my_tcp_sockets::{
     socket_reader::{ReadBuffer, ReadingTcpContractFail, SocketReader},
-    TcpSocketSerializer,
+    TcpSocketSerializer, TcpWriteBuffer,
 };
 
 use super::models::BidAskTcpMessage;
 
-static CLCR: &[u8] = &[13u8, 10u8];
-const MAX_PACKET_CAPACITY: usize = 255;
+static CL_CR: &[u8] = &[13u8, 10u8];
 
 pub struct BidAskTcpSerializer {
     read_buffer: ReadBuffer,
@@ -21,16 +19,15 @@ impl BidAskTcpSerializer {
     }
 }
 
-#[async_trait]
+#[async_trait::async_trait]
 impl TcpSocketSerializer<BidAskTcpMessage> for BidAskTcpSerializer {
-    const PING_PACKET_IS_SINGLETONE: bool = false;
+    const PING_PACKET_IS_SINGLETON: bool = true;
 
-    fn serialize(&self, contract: BidAskTcpMessage) -> Vec<u8> {
-        let mut result = Vec::with_capacity(MAX_PACKET_CAPACITY);
-        contract.serialize(&mut result).unwrap();
-        result.extend_from_slice(CLCR);
-        result
+    fn serialize(&self, out: &mut impl TcpWriteBuffer, contract: &BidAskTcpMessage) {
+        contract.serialize(out);
+        out.write_slice(CL_CR);
     }
+
     fn get_ping(&self) -> BidAskTcpMessage {
         return BidAskTcpMessage::Ping;
     }
@@ -39,26 +36,15 @@ impl TcpSocketSerializer<BidAskTcpMessage> for BidAskTcpSerializer {
         socket_reader: &mut TSocketReader,
     ) -> Result<BidAskTcpMessage, ReadingTcpContractFail> {
         let result = socket_reader
-            .read_until_end_marker(&mut self.read_buffer, CLCR)
+            .read_until_end_marker(&mut self.read_buffer, CL_CR)
             .await?;
 
-        let result = &result[..result.len() - CLCR.len()];
+        let result = &result[..result.len() - CL_CR.len()];
         let result = BidAskTcpMessage::parse(result);
 
         match result {
             Ok(result) => Ok(result),
             Err(_) => Err(ReadingTcpContractFail::ErrorReadingSize),
         }
-    }
-
-    fn serialize_ref(&self, contract: &BidAskTcpMessage) -> Vec<u8> {
-        let mut result = Vec::with_capacity(MAX_PACKET_CAPACITY);
-        contract.serialize(&mut result).unwrap();
-        result.extend_from_slice(CLCR);
-        result
-    }
-
-    fn apply_packet(&mut self, _: &BidAskTcpMessage) -> bool {
-        false
     }
 }

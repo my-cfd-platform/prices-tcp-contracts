@@ -1,8 +1,9 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
+use my_tcp_sockets::TcpWriteBuffer;
 
-pub const SOURCE_DATETIME: u8 = 'S' as u8;
-pub const GENERATED_DATETIME: u8 = 'G' as u8;
-pub const OUR_DATETIME: u8 = 'O' as u8;
+pub const SOURCE_DATE_TIME: u8 = 'S' as u8;
+pub const GENERATED_DATE_TIME: u8 = 'G' as u8;
+pub const OUR_DATE_TIME: u8 = 'O' as u8;
 pub const MESSAGE_SPLITTER: &[u8; 1] = b" ";
 
 #[derive(Debug, Clone)]
@@ -16,25 +17,22 @@ pub struct BidAskDataTcpModel {
 }
 
 impl BidAskDataTcpModel {
-    pub fn serialize(&self) -> Result<Vec<u8>, SerializeError> {
-        let mut result = Vec::new();
-        result.extend_from_slice(b"A");
-        result.extend_from_slice(MESSAGE_SPLITTER);
-        result.extend_from_slice(self.exchange_id.as_bytes());
-        result.extend_from_slice(MESSAGE_SPLITTER);
-        result.extend_from_slice(self.instrument_id.as_bytes());
-        result.extend_from_slice(MESSAGE_SPLITTER);
-        result.extend_from_slice(b"B");
-        result.extend_from_slice(format!("{}", self.bid).as_bytes());
-        result.extend_from_slice(MESSAGE_SPLITTER);
-        result.extend_from_slice(b"A");
-        result.extend_from_slice(format!("{}", self.ask).as_bytes());
-        result.extend_from_slice(MESSAGE_SPLITTER);
-        result.extend_from_slice(format!("{}", self.volume).as_bytes());
-        result.extend_from_slice(MESSAGE_SPLITTER);
-        result.extend_from_slice(self.datetime.serialize()?.as_slice());
-
-        return Ok(result);
+    pub fn serialize(&self, out: &mut impl TcpWriteBuffer) {
+        out.write_byte(b'A');
+        out.write_slice(MESSAGE_SPLITTER);
+        out.write_slice(self.exchange_id.as_bytes());
+        out.write_slice(MESSAGE_SPLITTER);
+        out.write_slice(self.instrument_id.as_bytes());
+        out.write_slice(MESSAGE_SPLITTER);
+        out.write_byte(b'B');
+        out.write_slice(format!("{}", self.bid).as_bytes());
+        out.write_slice(MESSAGE_SPLITTER);
+        out.write_byte(b'A');
+        out.write_slice(format!("{}", self.ask).as_bytes());
+        out.write_slice(MESSAGE_SPLITTER);
+        out.write_slice(format!("{}", self.volume).as_bytes());
+        out.write_slice(MESSAGE_SPLITTER);
+        self.datetime.serialize(out);
     }
 
     pub fn deserialize(src: &[u8]) -> Result<Self, SerializeError> {
@@ -64,25 +62,21 @@ pub enum BidAskDateTimeTcpModel {
 }
 
 impl BidAskDateTimeTcpModel {
-    pub fn serialize(&self) -> Result<Vec<u8>, SerializeError> {
-        let mut result = Vec::new();
-
+    pub fn serialize(&self, out: &mut impl TcpWriteBuffer) {
         match self {
             &BidAskDateTimeTcpModel::Source(date) => {
-                result.push(SOURCE_DATETIME);
-                result.extend_from_slice(date.format("%Y%m%d%H%M%S%.3f").to_string().as_bytes());
+                out.write_byte(SOURCE_DATE_TIME);
+                out.write_slice(date.format("%Y%m%d%H%M%S%.3f").to_string().as_bytes());
             }
             &BidAskDateTimeTcpModel::Our(date) => {
-                result.push(OUR_DATETIME);
-                result.extend_from_slice(date.format("%Y%m%d%H%M%S%.3f").to_string().as_bytes());
+                out.write_byte(OUR_DATE_TIME);
+                out.write_slice(date.format("%Y%m%d%H%M%S%.3f").to_string().as_bytes());
             }
             &BidAskDateTimeTcpModel::Generated(date) => {
-                result.push(GENERATED_DATETIME);
-                result.extend_from_slice(date.format("%Y%m%d%H%M%S%.3f").to_string().as_bytes());
+                out.write_byte(GENERATED_DATE_TIME);
+                out.write_slice(date.format("%Y%m%d%H%M%S%.3f").to_string().as_bytes());
             }
         };
-
-        return Ok(result);
     }
 
     pub fn deserialize(date_data: &[u8]) -> Result<Self, SerializeError> {
@@ -91,9 +85,9 @@ impl BidAskDateTimeTcpModel {
 
         if let Some(marker_byte) = date_marker {
             let date = match marker_byte {
-                &OUR_DATETIME => Self::Our(date),
-                &SOURCE_DATETIME => Self::Source(date),
-                &GENERATED_DATETIME => Self::Generated(date),
+                &OUR_DATE_TIME => Self::Our(date),
+                &SOURCE_DATE_TIME => Self::Source(date),
+                &GENERATED_DATE_TIME => Self::Generated(date),
                 _ => return Err(SerializeError::InvalidDateMarker),
             };
 
@@ -107,11 +101,11 @@ impl BidAskDateTimeTcpModel {
 fn deserialize_date(date: &[u8]) -> Result<DateTime<Utc>, SerializeError> {
     let string_date = String::from_utf8(date.to_vec());
 
-    let Ok(date_string) = string_date else{
+    let Ok(date_string) = string_date else {
         return Err(SerializeError::DateSerializeError);
     };
 
-    let Ok(date_time) = NaiveDateTime::parse_from_str(&date_string, "%Y%m%d%H%M%S%.3f") else{
+    let Ok(date_time) = NaiveDateTime::parse_from_str(&date_string, "%Y%m%d%H%M%S%.3f") else {
         return Err(SerializeError::InvalidDate);
     };
 
@@ -156,9 +150,9 @@ mod tests {
     fn test_serialize() {
         let message = "A BINANCE EURUSD B1.55555 A2.55555 50000000 S20230213142225.555";
 
-        let datetime =
+        let date_time =
             NaiveDateTime::parse_from_str("20230213142225.555", "%Y%m%d%H%M%S%.3f").unwrap();
-        let utc = DateTime::<Utc>::from_utc(datetime, Utc);
+        let utc = DateTime::<Utc>::from_utc(date_time, Utc);
         let result = BidAskDataTcpModel {
             exchange_id: "BINANCE".to_string(),
             instrument_id: "EURUSD".to_string(),
@@ -168,8 +162,10 @@ mod tests {
             datetime: BidAskDateTimeTcpModel::Source(utc),
         };
 
-        let deserialzie = result.serialize().unwrap();
+        let mut serialized = Vec::new();
 
-        assert_eq!(String::from_utf8(deserialzie).unwrap(), message);
+        result.serialize(&mut serialized);
+
+        assert_eq!(String::from_utf8(serialized).unwrap(), message);
     }
 }

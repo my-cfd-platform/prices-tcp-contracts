@@ -1,4 +1,4 @@
-use my_tcp_sockets::tcp_connection::TcpContract;
+use my_tcp_sockets::{TcpContract, TcpWriteBuffer};
 
 use super::bid_ask_data::{BidAskDataTcpModel, SerializeError};
 
@@ -28,14 +28,11 @@ impl BidAskTcpMessage {
         Ok(Self::BidAsk(BidAskDataTcpModel::deserialize(src)?))
     }
 
-    pub fn serialize(&self, dest: &mut Vec<u8>) -> Result<(), SerializeError> {
+    pub fn serialize(&self, write_buffer: &mut impl TcpWriteBuffer) {
         match self {
-            BidAskTcpMessage::Ping => Ok(dest.extend_from_slice(b"PING")),
-            BidAskTcpMessage::Pong => Ok(dest.extend_from_slice(b"PONG")),
-            BidAskTcpMessage::BidAsk(bid_ask) => {
-                dest.extend_from_slice(bid_ask.serialize()?.as_slice());
-                Ok(())
-            }
+            BidAskTcpMessage::Ping => write_buffer.write_slice("PING".as_bytes()),
+            BidAskTcpMessage::Pong => write_buffer.write_slice(b"PONG"),
+            BidAskTcpMessage::BidAsk(bid_ask) => bid_ask.serialize(write_buffer),
         }
     }
 
