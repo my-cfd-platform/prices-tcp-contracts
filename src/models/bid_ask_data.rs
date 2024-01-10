@@ -13,7 +13,7 @@ pub struct BidAskDataTcpModel {
     pub bid: f64,
     pub ask: f64,
     pub volume: f64,
-    pub datetime: BidAskDateTimeTcpModel,
+    pub date_time: BidAskDateTimeTcpModel,
 }
 
 impl BidAskDataTcpModel {
@@ -32,24 +32,61 @@ impl BidAskDataTcpModel {
         out.write_slice(MESSAGE_SPLITTER);
         out.write_slice(format!("{}", self.volume).as_bytes());
         out.write_slice(MESSAGE_SPLITTER);
-        self.datetime.serialize(out);
+        self.date_time.serialize(out);
     }
 
     pub fn deserialize(src: &[u8]) -> Result<Self, SerializeError> {
-        let chunks = src.split(|x| *x == b' ').collect::<Vec<&[u8]>>();
-        let exchange_id = String::from_utf8(chunks[1].to_vec()).unwrap();
-        let instrument_id = String::from_utf8(chunks[2].to_vec()).unwrap();
-        let bid = String::from_utf8(chunks[3][1..].to_vec()).unwrap();
-        let ask = String::from_utf8(chunks[4][1..].to_vec()).unwrap();
-        let volume = String::from_utf8(chunks[5].to_vec()).unwrap();
+        let mut no = 0;
+        let mut exchange_id = None;
+        let mut instrument_id = None;
+        let mut bid = None;
+        let mut ask = None;
+        let mut volume = None;
+        let mut date_time = None;
+
+        for itm in src.split(|x| *x == b' ') {
+            match no {
+                1 => exchange_id = std::str::from_utf8(itm).unwrap().into(),
+                2 => instrument_id = std::str::from_utf8(itm).unwrap().into(),
+                3 => bid = std::str::from_utf8(itm).unwrap().into(),
+                4 => ask = std::str::from_utf8(itm).unwrap().into(),
+                5 => volume = std::str::from_utf8(itm).unwrap().into(),
+                6 => date_time = itm.into(),
+                _ => {}
+            }
+
+            no += 1;
+        }
+
+        /*
+               let chunks = src.split(|x| *x == b' ').collect::<Vec<&[u8]>>();
+               let exchange_id = String::from_utf8(chunks[1].to_vec()).unwrap();
+               let instrument_id = String::from_utf8(chunks[2].to_vec()).unwrap();
+               let bid = String::from_utf8(chunks[3][1..].to_vec()).unwrap();
+               let ask = String::from_utf8(chunks[4][1..].to_vec()).unwrap();
+               let volume = String::from_utf8(chunks[5].to_vec()).unwrap();
+        */
+
+        let exchange_id = exchange_id.unwrap();
+        let instrument_id = instrument_id.unwrap();
+        let bid = bid.unwrap();
+        let bid = bid.parse().unwrap();
+        let ask = ask.unwrap();
+        let ask = ask.parse().unwrap();
+
+        let volume = volume.unwrap();
+        let volume = volume.parse().unwrap();
+
+        let date_time = date_time.unwrap();
+        let date_time = BidAskDateTimeTcpModel::deserialize(date_time)?;
 
         Ok(Self {
-            exchange_id,
-            instrument_id,
-            bid: bid.parse().unwrap(),
-            ask: ask.parse().unwrap(),
-            volume: volume.parse().unwrap(),
-            datetime: BidAskDateTimeTcpModel::deserialize(chunks[6])?,
+            exchange_id: exchange_id.to_string(),
+            instrument_id: instrument_id.to_string(),
+            bid,
+            ask,
+            volume,
+            date_time,
         })
     }
 }
@@ -137,7 +174,7 @@ mod tests {
         assert_eq!(result.ask, 2.55555);
         assert_eq!(result.volume, 50000000.0);
 
-        let is_source = match result.datetime {
+        let is_source = match result.date_time {
             BidAskDateTimeTcpModel::Source(_) => true,
             BidAskDateTimeTcpModel::Our(_) => false,
             BidAskDateTimeTcpModel::Generated(_) => false,
@@ -159,7 +196,7 @@ mod tests {
             bid: 1.55555,
             ask: 2.55555,
             volume: 50000000.0,
-            datetime: BidAskDateTimeTcpModel::Source(utc),
+            date_time: BidAskDateTimeTcpModel::Source(utc),
         };
 
         let mut serialized = Vec::new();
