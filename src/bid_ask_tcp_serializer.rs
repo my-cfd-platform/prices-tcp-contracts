@@ -19,6 +19,12 @@ impl BidAskTcpSerializer {
     }
 }
 
+impl Default for BidAskTcpSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait::async_trait]
 impl TcpSocketSerializer<BidAskTcpMessage, ()> for BidAskTcpSerializer {
     fn serialize(&self, out: &mut impl TcpWriteBuffer, contract: &BidAskTcpMessage, _: &()) {
