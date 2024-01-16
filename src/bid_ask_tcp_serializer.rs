@@ -1,6 +1,6 @@
 use my_tcp_sockets::{
     socket_reader::{ReadBuffer, ReadingTcpContractFail, SocketReader},
-    TcpSerializationMetadata, TcpSocketSerializer, TcpWriteBuffer,
+    TcpSerializerMetadata, TcpSocketSerializer, TcpWriteBuffer,
 };
 
 use super::models::BidAskTcpMessage;
@@ -27,6 +27,8 @@ impl Default for BidAskTcpSerializer {
 
 #[async_trait::async_trait]
 impl TcpSocketSerializer<BidAskTcpMessage, ()> for BidAskTcpSerializer {
+    // const PING_PACKET_IS_SINGLETONE: bool = false;
+
     fn serialize(&self, out: &mut impl TcpWriteBuffer, contract: &BidAskTcpMessage, _: &()) {
         contract.serialize(out);
         out.write_slice(CL_CR);
@@ -52,9 +54,15 @@ impl TcpSocketSerializer<BidAskTcpMessage, ()> for BidAskTcpSerializer {
             Err(_) => Err(ReadingTcpContractFail::ErrorReadingSize),
         }
     }
+    // fn serialize_ref(&self, contract: &TContract) -> Vec<u8>{
+    //     return vec![];
+    // }
+    // fn apply_packet(&mut self, contract: &TContract) -> bool{
+    //     false
+    // }
 }
 
-impl TcpSerializationMetadata<BidAskTcpMessage> for () {
+impl TcpSerializerMetadata<BidAskTcpMessage> for () {
     fn is_tcp_contract_related_to_metadata(&self, _: &BidAskTcpMessage) -> bool {
         false
     }
