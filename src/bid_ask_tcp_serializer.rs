@@ -1,6 +1,6 @@
 use my_tcp_sockets::{
     socket_reader::{ReadBuffer, ReadingTcpContractFail, SocketReader},
-    TcpSerializerMetadata, TcpSocketSerializer, TcpWriteBuffer,
+    TcpSerializerFactory, TcpSerializerState, TcpSocketSerializer, TcpWriteBuffer,
 };
 
 use super::models::BidAskTcpMessage;
@@ -62,9 +62,21 @@ impl TcpSocketSerializer<BidAskTcpMessage, ()> for BidAskTcpSerializer {
     // }
 }
 
-impl TcpSerializerMetadata<BidAskTcpMessage> for () {
-    fn is_tcp_contract_related_to_metadata(&self, _: &BidAskTcpMessage) -> bool {
+pub struct TcpFeedSerializerFactory;
+
+#[async_trait::async_trait]
+impl TcpSerializerFactory<BidAskTcpMessage, BidAskTcpSerializer, ()> for TcpFeedSerializerFactory {
+    async fn create_serializer(&self) -> BidAskTcpSerializer {
+        BidAskTcpSerializer::new()
+    }
+    async fn create_serializer_state(&self) -> () {
+        ()
+    }
+}
+
+impl TcpSerializerState<BidAskTcpMessage> for () {
+    fn is_tcp_contract_related_to_metadata(&self, _contract: &BidAskTcpMessage) -> bool {
         false
     }
-    fn apply_tcp_contract(&mut self, _: &BidAskTcpMessage) {}
+    fn apply_tcp_contract(&mut self, _contract: &BidAskTcpMessage) {}
 }
