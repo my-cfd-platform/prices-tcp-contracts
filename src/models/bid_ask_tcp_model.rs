@@ -18,11 +18,13 @@ impl BidAskTcpMessage {
     }
 
     pub fn parse(src: &[u8]) -> Result<Self, SerializeError> {
-        if src == b"PING" {
-            return Ok(Self::Ping);
-        }
-        if src == b"PONG" {
-            return Ok(Self::Pong);
+        if src.len() == 6 {
+            if &src[..4] == b"PING" {
+                return Ok(Self::Ping);
+            }
+            if &src[..4] == b"PONG" {
+                return Ok(Self::Pong);
+            }
         }
 
         Ok(Self::BidAsk(BidAskDataTcpModel::deserialize(src)?))
