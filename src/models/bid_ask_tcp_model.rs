@@ -7,6 +7,7 @@ pub enum BidAskTcpMessage {
     Ping,
     Pong,
     BidAsk(BidAskDataTcpModel),
+    Skip(String),
 }
 
 impl BidAskTcpMessage {
@@ -27,7 +28,11 @@ impl BidAskTcpMessage {
             }
         }
 
-        Ok(Self::BidAsk(BidAskDataTcpModel::deserialize(src)?))
+        if src[0] == b'A' {
+            return Ok(Self::BidAsk(BidAskDataTcpModel::deserialize(src)?));
+        }
+
+        Ok(Self::Skip((std::str::from_utf8(src).unwrap()).to_string()))
     }
 
     pub fn serialize(&self, write_buffer: &mut impl TcpWriteBuffer) {
@@ -35,6 +40,9 @@ impl BidAskTcpMessage {
             BidAskTcpMessage::Ping => write_buffer.write_slice("PING".as_bytes()),
             BidAskTcpMessage::Pong => write_buffer.write_slice(b"PONG"),
             BidAskTcpMessage::BidAsk(bid_ask) => bid_ask.serialize(write_buffer),
+            BidAskTcpMessage::Skip(message) => {
+                write_buffer.write_slice(message.as_bytes());
+            }
         }
     }
 
@@ -43,6 +51,7 @@ impl BidAskTcpMessage {
             BidAskTcpMessage::Ping => false,
             BidAskTcpMessage::Pong => false,
             BidAskTcpMessage::BidAsk(_) => true,
+            BidAskTcpMessage::Skip(_) => false,
         }
     }
 }
