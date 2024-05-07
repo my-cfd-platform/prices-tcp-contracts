@@ -29,7 +29,12 @@ impl BidAskTcpMessage {
         }
 
         if src[0] == b'A' {
-            return Ok(Self::BidAsk(BidAskDataTcpModel::deserialize(src)?));
+            match BidAskDataTcpModel::deserialize(src) {
+                Ok(bid_ask) => return Ok(Self::BidAsk(bid_ask)),
+                Err(e) => {
+                    println!("Can not deserialize bid ask data: {:?}", e);
+                }
+            }
         }
 
         Ok(Self::Skip((std::str::from_utf8(src).unwrap()).to_string()))
