@@ -70,9 +70,19 @@ impl BidAskDataTcpModel {
         let exchange_id = exchange_id.unwrap();
         let instrument_id = instrument_id.unwrap();
         let bid = bid.unwrap();
-        let bid = bid.parse().unwrap();
+        let bid = if bid.starts_with("B") {
+            bid[1..].parse().unwrap()
+        } else {
+            bid.parse().unwrap()
+        };
+
         let ask = ask.unwrap();
-        let ask = ask.parse().unwrap();
+
+        let ask = if ask.starts_with("A") {
+            ask[1..].parse().unwrap()
+        } else {
+            ask.parse().unwrap()
+        };
 
         let volume = volume.unwrap();
         let volume = volume.parse().unwrap();

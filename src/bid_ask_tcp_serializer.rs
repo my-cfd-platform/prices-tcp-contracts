@@ -80,3 +80,5 @@ impl TcpSerializerState<BidAskTcpMessage> for () {
     }
     fn apply_tcp_contract(&mut self, _contract: &BidAskTcpMessage) {}
 }
+
+

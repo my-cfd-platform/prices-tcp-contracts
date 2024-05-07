@@ -53,3 +53,17 @@ impl TcpContract for BidAskTcpMessage {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::BidAskTcpMessage;
+
+    #[test]
+    fn test_message() {
+        let src = "A binance BTCUSD B63687.33 A63687.34 0 S20240507153442.320";
+
+        let itm = BidAskTcpMessage::parse(src.as_bytes()).unwrap();
+
+        println!("{:?}", itm);
+    }
+}
