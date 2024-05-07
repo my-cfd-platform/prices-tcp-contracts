@@ -10,4 +10,3 @@ my-tcp-sockets = { tag = "0.1.9", git = "https://github.com/MyJetTools/my-tcp-so
 ] }
 rust-extensions = { tag = "0.1.4", git = "https://github.com/MyJetTools/rust-extensions.git" }
 async-trait = "*"
-chrono = "*"
