@@ -46,10 +46,6 @@ impl TcpSocketSerializer<BidAskTcpMessage, ()> for BidAskTcpSerializer {
             .read_until_end_marker(&mut self.read_buffer, CL_CR)
             .await?;
 
-        if result.len() < 10 {
-            println!("Small packet: {:?}", std::str::from_utf8(result).unwrap());
-        }
-
         let result = &result[..result.len() - CL_CR.len()];
 
         let result = BidAskTcpMessage::parse(result);
