@@ -161,7 +161,11 @@ fn write_date(out: &mut impl TcpWriteBuffer, dt: DateTimeAsMicroseconds) {
     out.write_slice(&str[8..10]);
     out.write_slice(&str[11..13]);
     out.write_slice(&str[14..16]);
-    out.write_slice(&str[17..23]);
+    if str[19] == b'+' {
+        out.write_slice(&str[17..19]);
+    } else {
+        out.write_slice(&str[17..23]);
+    }
 }
 
 #[cfg(test)]
@@ -210,5 +214,16 @@ mod tests {
         result.serialize(&mut serialized);
 
         assert_eq!(String::from_utf8(serialized).unwrap(), message);
+    }
+
+    #[test]
+    fn test_write_date() {
+        let dt = DateTimeAsMicroseconds::from_str("2015-05-12T12:13:14.1").unwrap();
+
+        let mut buffer = Vec::new();
+
+        write_date(&mut buffer, dt);
+
+        println!("{:?}", std::str::from_utf8(buffer.as_slice()).unwrap());
     }
 }

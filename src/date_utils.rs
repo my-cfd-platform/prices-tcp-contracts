@@ -26,7 +26,12 @@ pub fn parse_tcp_feed_date(date: &[u8]) -> DateTimeAsMicroseconds {
     let hour = parse_number_from_slice(date, &date[8..10]);
     let min = parse_number_from_slice(date, &date[10..12]);
     let sec = parse_number_from_slice(date, &date[12..14]);
-    let micros: i64 = parse_number_from_slice(date, &date[15..18]);
+
+    let micros = if date.len() < 15 {
+        0
+    } else {
+        parse_number_from_slice(date, &date[15..18])
+    };
 
     DateTimeAsMicroseconds::create(year, month, day, hour, min, sec, micros * 1000)
 }
@@ -57,5 +62,21 @@ mod tests {
         let date = "20240425-17:28:02.629";
         let date: rust_extensions::date_time::DateTimeAsMicroseconds = super::parse_fix_date(date);
         assert_eq!(&date.to_rfc3339()[..23], "2024-04-25T17:28:02.629");
+    }
+
+    #[test]
+    fn test_parse_tcp_date() {
+        let date = "20240425172802.629";
+        let date: rust_extensions::date_time::DateTimeAsMicroseconds =
+            super::parse_tcp_feed_date(date.as_bytes());
+        assert_eq!(&date.to_rfc3339()[..23], "2024-04-25T17:28:02.629");
+    }
+
+    #[test]
+    fn test_parse_tcp_date_no_micros() {
+        let date = "20240425172802";
+        let date: rust_extensions::date_time::DateTimeAsMicroseconds =
+            super::parse_tcp_feed_date(date.as_bytes());
+        assert_eq!(&date.to_rfc3339()[..20], "2024-04-25T17:28:02+");
     }
 }
