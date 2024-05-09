@@ -143,6 +143,14 @@ impl BidAskDateTimeTcpModel {
 
         return Err(SerializeError::MissingDateMarker);
     }
+
+    pub fn get_date_time(&self) -> DateTimeAsMicroseconds {
+        match self {
+            BidAskDateTimeTcpModel::Source(dt) => dt.clone(),
+            BidAskDateTimeTcpModel::Our(dt) => dt.clone(),
+            BidAskDateTimeTcpModel::Generated(dt) => dt.clone(),
+        }
+    }
 }
 
 #[derive(Debug)]
