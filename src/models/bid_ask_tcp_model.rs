@@ -37,7 +37,9 @@ impl BidAskTcpMessage {
             }
         }
 
-        Ok(Self::Skip((std::str::from_utf8(src).unwrap()).to_string()))
+        Ok(Self::Skip(
+            (std::str::from_utf8(src).unwrap_or_default()).to_string(),
+        ))
     }
 
     pub fn serialize(&self, write_buffer: &mut impl TcpWriteBuffer) {
